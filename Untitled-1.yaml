@@ -1,0 +1,19 @@
+cd src/backend
+python3 -m pip install -r requirements.txt
+uvicorn app:app --host 127.0.0.1 --port 8000 --reload
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4319
+
+exporters:
+  logging:
+    loglevel: debug
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [logging]

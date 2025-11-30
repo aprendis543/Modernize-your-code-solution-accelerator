@@ -25,6 +25,32 @@ import uvicorn
 # Load environment variables
 load_dotenv()
 
+# OpenTelemetry tracing setup
+try:
+    from opentelemetry import trace
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    from opentelemetry.instrumentation.requests import RequestsInstrumentor
+
+    resource = Resource.create({"service.name": "code-gen-accelerator-backend"})
+    provider = TracerProvider(resource=resource)
+
+    # Configure OTLP exporter to use the local collector endpoint
+    otlp_exporter = OTLPSpanExporter(endpoint="http://localhost:4319")
+    span_processor = BatchSpanProcessor(otlp_exporter)
+    provider.add_span_processor(span_processor)
+
+    trace.set_tracer_provider(provider)
+
+    _otel_available = True
+except Exception:
+    # If OpenTelemetry packages are not installed or initialization fails,
+    # continue without tracing to avoid breaking the application startup.
+    _otel_available = False
+
 # Configure logging
 logger = AppLogger("app")
 
@@ -89,6 +115,15 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     """Create and return the FastAPI application instance."""
     app = FastAPI(title="Code Gen Accelerator", version="1.0.0", lifespan=lifespan)
+
+    # Instrument FastAPI and outgoing HTTP requests if OpenTelemetry is available
+    if _otel_available:
+        try:
+            FastAPIInstrumentor.instrument_app(app)
+            RequestsInstrumentor().instrument()
+        except Exception:
+            # Non-fatal: continue even if instrumentation fails
+            logger.logger.warning("OpenTelemetry instrumentation failed to initialize.")
 
     # Configure CORS
     app.add_middleware(

@@ -50,5 +50,7 @@ opentelemetry-sdk==1.37.0
 opentelemetry-api==1.37.0
 opentelemetry-semantic-conventions==0.58b0
 opentelemetry-instrumentation==0.58b0
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-requests
 azure-monitor-opentelemetry==1.8.1
 azure-ai-projects==1.0.0
